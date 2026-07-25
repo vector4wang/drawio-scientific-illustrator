@@ -14,7 +14,9 @@ An MCP plugin for **Codex** and **Claude Code** that lets an AI agent draw scien
 
 - `drawio-live` MCP server: launches/connects to the visible draw.io desktop editor and edits its active graph model in real time.
 - `drawio-file-utils` MCP server: validates saved `.drawio` documents and exports PNG, SVG, PDF, or JPG deliverables.
-- A skill: teaches the agent to inspect a reference, decompose it into editable primitives, draw with pacing, visually review sections, refine the live graph, and save only after the visible drawing exists. Available for both Codex and Claude Code.
+- **Skills**: teach the agent to inspect a reference, decompose it into editable primitives, draw with pacing, visually review sections, refine the live graph, and save only after the visible drawing exists. Available for both Codex and Claude Code. Two skills are provided:
+  - `drawio-live` — draw diagrams from scratch via `/drawio-live`
+  - `recreate-scientific-figure-in-drawio` — recreate a reference image as editable geometry
 - A repository-local Codex marketplace so the complete plugin can be installed as one unit.
 - A root `.mcp.json` so Claude Code can auto-detect the MCP servers when the repository is opened as a project.
 
@@ -57,7 +59,7 @@ Review [`install.sh`](install.sh), then run:
 curl -fsSL https://raw.githubusercontent.com/vector4wang/drawio-scientific-illustrator/main/install.sh | bash
 ```
 
-Restart Codex and start a new task after installation so the new skill and MCP tools are loaded.
+Restart Codex and start a new task after installation so the new skill and MCP tools are loaded. For Claude Code, open the cloned repository directory as your project.
 
 ### Install — manual and auditable
 
@@ -99,9 +101,9 @@ Then open the cloned repository directory as your Claude Code project.
 
 ### How to use it
 
-1. Restart Codex after installation and create a new task.
+1. Restart Codex after installation and create a new task (for Claude Code, open the project directory).
 2. Attach a PNG, JPEG, SVG, or a rendered PDF page as the reference.
-3. Mention **Draw.io Scientific Illustrator** or select the plugin in the composer.
+3. Mention **Draw.io Scientific Illustrator** or use `/drawio-live` (Claude Code).
 4. State the desired pacing and output formats.
 
 > **Recommended Codex configuration for complex scientific redraws:** choose **GPT-5.6 Sol** and set reasoning effort to **Max**. In Codex settings, enable the six-level reasoning selector first; the default five-level selector does not show the Max option. This setting can increase response time and token use.
@@ -128,7 +130,7 @@ XML。文字、箭头、分区和图例都要可编辑；完成后保存 .drawio
 
 1. Open the cloned repository directory as your Claude Code project.
 2. Attach a PNG, JPEG, SVG, or a rendered PDF page as the reference.
-3. The MCP tools (`drawio_live_*`, `drawio_validate`, `drawio_export`) and the skill are available automatically.
+3. All MCP tools (`drawio_live_*`, `drawio_validate`, `drawio_export`, etc.) and both skills are available automatically.
 
 ```text
 Launch the live draw.io canvas and recreate this reference scientific figure step
@@ -142,14 +144,18 @@ the final .drawio file and export a 2000 px PNG preview.
 
 The agent normally uses the tools in this order:
 
-1. `drawio_live_launch` — launch or connect to a visible draw.io editor.
-2. `drawio_live_status` — confirm that the graph is ready.
-3. `drawio_live_add_shape`, `drawio_live_add_edge`, or paced `drawio_live_draw_sequence` — construct editable content visibly.
-4. `drawio_live_screenshot` — inspect the draw.io renderer after logical sections.
-5. `drawio_live_inspect` and `drawio_live_update_cell` — correct labels, styles, positions, and sizes.
-6. `drawio_live_fit` — keep the evolving figure in view.
-7. `drawio_live_save_snapshot` — serialize the already-visible graph to `.drawio`.
-8. `drawio_validate` and `drawio_export` — validate and export deliverables.
+1. `drawio_live_search_shapes` — search for specialized stencil shapes (AWS, Azure, GCP, Network, BPMN, etc.).
+2. `drawio_live_launch` — launch or connect to a visible draw.io editor.
+3. `drawio_live_status` — confirm that the graph is ready.
+4. `drawio_live_add_shape`, `drawio_live_add_edge`, or paced `drawio_live_draw_sequence` — construct editable content visibly.
+5. `drawio_live_screenshot` — inspect the draw.io renderer after logical sections.
+6. `drawio_live_inspect` and `drawio_live_update_cell` — correct labels, styles, positions, and sizes.
+7. `drawio_live_delete_cells` — remove specific cells by id (with safety confirmation).
+8. `drawio_live_undo` / `drawio_live_redo` — undo/redo editing operations.
+9. `drawio_live_list_pages` / `drawio_live_add_page` / `drawio_live_switch_page` — multi-page document support.
+10. `drawio_live_fit` — keep the evolving figure in view.
+11. `drawio_live_save_snapshot` — serialize the already-visible graph to `.drawio`.
+12. `drawio_validate` and `drawio_export` — validate and export deliverables.
 
 ### Configuration
 
@@ -211,7 +217,9 @@ Draw.io Scientific Illustrator 是一个面向科研插图的 MCP 插件，同�
 
 - 实时控制 draw.io 画布的 `drawio-live` MCP；
 - 校验和导出的 `drawio-file-utils` MCP；
-- 指导 AI 重绘、检查和迭代科研插图的 Skill（同时提供 Codex 和 Claude Code 版本）；
+- 指导 AI 重绘、检查和迭代科研插图的 Skills（同时提供 Codex 和 Claude Code 版本）：
+  - `drawio-live` — 从零开始逐步绘制
+  - `recreate-scientific-figure-in-drawio` — 根据参考图临摹重绘
 - 可供 Codex 安装的自定义插件市场配置；
 - 项目根目录的 `.mcp.json`，供 Claude Code 自动发现 MCP 服务器。
 
@@ -248,7 +256,7 @@ macOS/Linux 用户先检查 [`install.sh`](install.sh)，然后运行：
 curl -fsSL https://raw.githubusercontent.com/vector4wang/drawio-scientific-illustrator/main/install.sh | bash
 ```
 
-安装完成后必须重启 Codex，并新建一个任务，使新的 Skill 和 MCP 工具被载入。
+安装完成后必须重启 Codex 并新建一个任务，使新的 Skill 和 MCP 工具被载入。对于 Claude Code，将克隆目录作为项目打开即可。
 
 ### 手动安装
 
@@ -292,9 +300,9 @@ cp claude-code/skills/recreate-scientific-figure-in-drawio/SKILL.md \
 
 ### 使用方法
 
-1. 重启 Codex 并新建任务；
+1. 重启 Codex 并新建任务（Claude Code 则将克隆目录作为项目打开）；
 2. 上传 PNG、JPEG、SVG，或者从 PDF 渲染出的参考页；
-3. 在输入框选择或提到 **Draw.io Scientific Illustrator**；
+3. 在输入框选择或提到 **Draw.io Scientific Illustrator**，或使用 `/drawio-live`（Claude Code）；
 4. 说明绘制步进间隔、画面尺寸和希望导出的格式。
 
 > **复杂科研插图重绘建议的 Codex 设置：**选择 **GPT-5.6 Sol**，并将推理等级设为 **“最高（Max）”**。需要先在 Codex 设置中开启 **6 档推理等级**；默认的 **5 档**选择器不会显示“最高”选项。该设置可能增加响应时间和 token 用量。
@@ -312,7 +320,7 @@ cp claude-code/skills/recreate-scientific-figure-in-drawio/SKILL.md \
 
 1. 将克隆的仓库目录作为 Claude Code 项目打开。
 2. 上传 PNG、JPEG、SVG，或从 PDF 渲染出的参考页。
-3. MCP 工具（`drawio_live_*`、`drawio_validate`、`drawio_export`）和 Skill 会自动可用。
+3. 所有 MCP 工具（`drawio_live_*`、`drawio_validate`、`drawio_export` 等）和两个 Skill 会自动可用。
 
 ```text
 启动实时 draw.io，以 400 ms 的步骤间隔重绘这张参考图。必须直接控制 draw.io 画布，
@@ -322,7 +330,7 @@ cp claude-code/skills/recreate-scientific-figure-in-drawio/SKILL.md \
 
 ### 工作过程
 
-正常情况下，Codex 会依次完成：
+正常情况下，AI 代理会依次完成：
 
 1. 启动可见的 draw.io；
 2. 确认内部 graph 已就绪；
