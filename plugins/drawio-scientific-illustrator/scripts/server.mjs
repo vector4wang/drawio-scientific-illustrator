@@ -1,24 +1,26 @@
 #!/usr/bin/env node
 
-import { createInterface } from "node:readline";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import os from "node:os";
+
+import {
+  SERVER_VERSION, xmlEscape, ensureStyle, setStyle, shapeStyle,
+  createMcpTransport,
+} from "./shared.mjs";
 import { drawioInstallHint, resolveDrawioExecutable } from "./drawio-path.mjs";
 
 const execFileAsync = promisify(execFile);
 const SERVER_NAME = "drawio-scientific-illustrator";
-const SERVER_VERSION = "1.0.0";
 const DRAWIO = resolveDrawioExecutable();
 const MAX_XML_BYTES = 12 * 1024 * 1024;
-const SUPPORTED_PROTOCOLS = new Set(["2024-11-05", "2025-03-26", "2025-06-18"]);
 
-const DEFAULT_VERTEX_STYLE =
-  "rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f2937;";
 const DEFAULT_EDGE_STYLE =
   "edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;";
+
+// ── Tool schemas ──
 
 const tools = [
   {
@@ -268,65 +270,7 @@ const tools = [
   },
 ];
 
-function rpcError(id, code, message, data) {
-  return { jsonrpc: "2.0", id: id ?? null, error: { code, message, ...(data === undefined ? {} : { data }) } };
-}
-
-function rpcResult(id, result) {
-  return { jsonrpc: "2.0", id, result };
-}
-
-function toolResult(value, isError = false) {
-  return {
-    content: [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }],
-    ...(typeof value === "object" && value !== null ? { structuredContent: value } : {}),
-    isError,
-  };
-}
-
-function xmlEscape(value = "") {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll("\r\n", "&#xa;")
-    .replaceAll("\n", "&#xa;")
-    .replaceAll("\r", "&#xa;");
-}
-
-function ensureStyle(style) {
-  if (!style) return "";
-  return style.endsWith(";") ? style : `${style};`;
-}
-
-function setStyle(style, key, value) {
-  if (value === undefined || value === null) return style;
-  const normalized = ensureStyle(style);
-  const re = new RegExp(`(?:^|;)${key}=[^;]*;`);
-  const entry = `${key}=${value};`;
-  return re.test(normalized) ? normalized.replace(re, (m) => `${m.startsWith(";") ? ";" : ""}${entry}`) : `${normalized}${entry}`;
-}
-
-function shapeStyle(shape = "rounded") {
-  const common = "whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f2937;";
-  const shapes = {
-    rectangle: `rounded=0;${common}`,
-    rounded: `rounded=1;${common}`,
-    ellipse: `ellipse;${common}`,
-    diamond: `rhombus;${common}`,
-    cylinder: `shape=cylinder3;boundedLbl=1;backgroundOutline=1;${common}`,
-    hexagon: `shape=hexagon;perimeter=hexagonPerimeter2;fixedSize=1;${common}`,
-    triangle: `triangle;${common}`,
-    parallelogram: `shape=parallelogram;perimeter=parallelogramPerimeter;${common}`,
-    cloud: `ellipse;shape=cloud;${common}`,
-    text: "text;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;html=1;fontColor=#1f2937;",
-    image: "shape=image;verticalLabelPosition=bottom;verticalAlign=top;imageAspect=0;aspect=fixed;html=1;",
-    group: "group;pointerEvents=0;",
-    swimlane: "swimlane;startSize=30;rounded=0;html=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;",
-  };
-  return shapes[shape] || DEFAULT_VERTEX_STYLE;
-}
+// ── XML/路径工具 ──
 
 function normalizeOutputPath(filePath, extension = ".drawio") {
   if (!filePath || typeof filePath !== "string") throw new Error("A file path is required.");
@@ -384,6 +328,8 @@ function removeStyle(style, key) {
   const entries = ensureStyle(style).split(";").filter(Boolean);
   return entries.filter((entry) => entry.split("=", 1)[0] !== key).join(";") + (entries.length ? ";" : "");
 }
+
+// ── XML 修补/校验 ──
 
 function patchCellBlock(block, patch) {
   const startEnd = block.indexOf(">");
@@ -537,6 +483,8 @@ function inspectXml(xml) {
   };
 }
 
+// ── 图片/图表生成 ──
+
 async function imageDataUri(imagePath) {
   const resolved = path.resolve(imagePath);
   const data = await fs.readFile(resolved);
@@ -672,6 +620,8 @@ async function createTraceDocument(args) {
   return { ...result, reference_path: reference, original_size: original, embedded_size: { width, height }, opacity, drawing_layer: "drawing-layer" };
 }
 
+// ── 导出 ──
+
 async function drawioVersion() {
   try {
     const { stdout, stderr } = await execFileAsync(DRAWIO.executable, ["--version"], { timeout: 15000, windowsHide: true });
@@ -724,30 +674,36 @@ async function exportDiagram(args) {
   }
 }
 
+// ── 工具分发（适配 createMcpTransport 的 { value } 格式） ──
+
 async function handleTool(name, args = {}) {
+  let value;
   switch (name) {
     case "drawio_status":
-      return { ...(await drawioVersion()), server_version: SERVER_VERSION, node: process.version, default_output_directory: path.join(os.homedir(), "Documents"), supported_formats: ["drawio", "png", "svg", "pdf", "jpg"] };
-    case "drawio_create_diagram": {
-      const xml = await buildDiagram(args);
-      return writeValidatedXml(args.output_path, xml, args.overwrite);
-    }
+      value = { ...(await drawioVersion()), server_version: SERVER_VERSION, node: process.version, default_output_directory: path.join(os.homedir(), "Documents"), supported_formats: ["drawio", "png", "svg", "pdf", "jpg"] };
+      break;
+    case "drawio_create_diagram":
+      value = await writeValidatedXml(args.output_path, await buildDiagram(args), args.overwrite);
+      break;
     case "drawio_create_trace_document":
-      return createTraceDocument(args);
+      value = await createTraceDocument(args);
+      break;
     case "drawio_write_xml":
-      return writeValidatedXml(args.output_path, args.xml, args.overwrite);
+      value = await writeValidatedXml(args.output_path, args.xml, args.overwrite);
+      break;
     case "drawio_validate": {
       const input = normalizeOutputPath(args.input_path);
       const xml = await fs.readFile(input, "utf8");
       const { _pages, ...report } = inspectXml(xml);
-      return { input_path: input, ...report };
+      value = { input_path: input, ...report };
+      break;
     }
     case "drawio_inspect": {
       const input = normalizeOutputPath(args.input_path);
       const xml = await fs.readFile(input, "utf8");
       const report = inspectXml(xml);
       const maxCells = args.max_cells || 200;
-      return {
+      value = {
         input_path: input,
         valid: report.valid,
         errors: report.errors,
@@ -768,6 +724,7 @@ async function handleTool(name, args = {}) {
           truncated: p.cells.length > maxCells,
         })),
       };
+      break;
     }
     case "drawio_update_cells": {
       const input = normalizeOutputPath(args.input_path);
@@ -776,65 +733,31 @@ async function handleTool(name, args = {}) {
       const updated = patchDiagramXml(xml, args.patches);
       const overwrite = output === input ? true : Boolean(args.overwrite);
       const result = await writeValidatedXml(output, updated, overwrite);
-      return { ...result, input_path: input, patches_applied: args.patches.length };
+      value = { ...result, input_path: input, patches_applied: args.patches.length };
+      break;
     }
     case "drawio_export":
-      return exportDiagram(args);
+      value = await exportDiagram(args);
+      break;
     case "drawio_open": {
       const input = normalizeOutputPath(args.input_path);
       await fs.access(input);
       const child = spawn(DRAWIO.executable, [input], { detached: true, stdio: "ignore", windowsHide: false });
       child.unref();
-      return { opened: true, input_path: input, application: DRAWIO.executable };
+      value = { opened: true, input_path: input, application: DRAWIO.executable };
+      break;
     }
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
+  return { value };
 }
 
-async function handleMessage(message) {
-  const { id, method, params } = message;
-  if (method === "initialize") {
-    const requested = params?.protocolVersion;
-    const protocolVersion = SUPPORTED_PROTOCOLS.has(requested) ? requested : "2025-06-18";
-    return rpcResult(id, {
-      protocolVersion,
-      capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
-      instructions: "Use absolute paths. Visually analyze reference images first, then create editable draw.io geometry, export a non-embedded PNG preview, inspect it, iterate, and finally export an embedded deliverable.",
-    });
-  }
-  if (method === "ping") return rpcResult(id, {});
-  if (method === "tools/list") return rpcResult(id, { tools });
-  if (method === "tools/call") {
-    try {
-      const value = await handleTool(params?.name, params?.arguments || {});
-      return rpcResult(id, toolResult(value));
-    } catch (error) {
-      return rpcResult(id, toolResult({ error: error.message, tool: params?.name }, true));
-    }
-  }
-  if (method?.startsWith("notifications/")) return null;
-  return rpcError(id, -32601, `Method not found: ${method}`);
-}
+// ── 启动 MCP 传输层 ──
 
-const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
-rl.on("line", async (line) => {
-  if (!line.trim()) return;
-  let message;
-  try {
-    message = JSON.parse(line);
-  } catch (error) {
-    process.stdout.write(`${JSON.stringify(rpcError(null, -32700, "Parse error", error.message))}\n`);
-    return;
-  }
-  try {
-    const response = await handleMessage(message);
-    if (response) process.stdout.write(`${JSON.stringify(response)}\n`);
-  } catch (error) {
-    process.stdout.write(`${JSON.stringify(rpcError(message.id, -32603, "Internal error", error.message))}\n`);
-  }
+createMcpTransport({
+  serverName: SERVER_NAME,
+  instructions: "Use absolute paths. Visually analyze reference images first, then create editable draw.io geometry, export a non-embedded PNG preview, inspect it, iterate, and finally export an embedded deliverable.",
+  tools,
+  handleTool,
 });
-
-process.on("uncaughtException", (error) => process.stderr.write(`[${SERVER_NAME}] ${error.stack || error.message}\n`));
-process.on("unhandledRejection", (error) => process.stderr.write(`[${SERVER_NAME}] ${error?.stack || error}\n`));

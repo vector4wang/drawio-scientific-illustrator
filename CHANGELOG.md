@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Added Claude Code support alongside existing Codex plugin.
+- Root `.mcp.json` for Claude Code MCP auto-detection when the repository is opened as a project.
+- Claude Code skill template at `claude-code/skills/` for installation to `~/.claude/skills/`.
+- Installers (`install.sh`, `install.ps1`) now detect and configure both Codex and Claude Code; at least one must be present.
+- `validate-repo.mjs` now verifies the root `.mcp.json` and Claude Code skill frontmatter.
+- README updated with Claude Code installation, usage, and troubleshooting sections (bilingual).
+
 ## 1.0.0 — 2026-07-12
 
 - First public release.

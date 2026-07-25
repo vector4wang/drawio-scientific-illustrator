@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "drawio-live": {
+      "command": "node",
+      "args": ["plugins/drawio-scientific-illustrator/scripts/live-server.mjs"]
+    },
+    "drawio-file-utils": {
+      "command": "node",
+      "args": ["plugins/drawio-scientific-illustrator/scripts/server.mjs"]
+    }
+  }
+}
