@@ -2,6 +2,8 @@
 
 [中文说明](#中文说明) · [English guide](#english-guide) · [MIT License](LICENSE)
 
+> **Forked from** [icebird1998/drawio-scientific-illustrator](https://github.com/icebird1998/drawio-scientific-illustrator) — original author: icebird1998.
+
 An MCP plugin for **Codex** and **Claude Code** that lets an AI agent draw scientific figures **live inside the visible draw.io desktop canvas**. You can watch shapes, labels, arrows, styling, and layout appear step by step. The live workflow calls draw.io's own graph API through a localhost-only MCP server; it does not automate the operating-system mouse or keyboard and does not create XML first and merely open it afterward.
 
 > Status: Windows is tested. macOS and Linux executable discovery is included, but live behavior can vary with draw.io/Electron packaging. Reports and pull requests are welcome.
@@ -191,13 +193,15 @@ Run the same installer again. It performs a fast-forward `git pull` and reinstal
 
 - The live API currently emphasizes editable draw.io primitives. Dense microscopy images, photographs, heatmaps, and complex plots may need a future dedicated live image-insertion operation.
 - Visual fidelity depends on reference resolution and how well the content can be represented by draw.io primitives.
-- Windows is the tested platform for v1.0.0; macOS/Linux support is best effort until community testing expands.
+- Windows is the tested platform; macOS/Linux support is best effort until community testing expands.
 
 ---
 
 ## 中文说明
 
 ### 这是什么
+
+> **Fork 自** [icebird1998/drawio-scientific-illustrator](https://github.com/icebird1998/drawio-scientific-illustrator) — 原始作者：icebird1998。
 
 Draw.io Scientific Illustrator 是一个面向科研插图的 MCP 插件，同时支持 Codex 和 Claude Code。它会启动桌面版 draw.io，并通过仅限本机的 MCP 通道直接调用 draw.io 自身的图模型 API。你可以亲眼看到形状、文字、箭头、配色和布局按步骤出现在画布上。
 
@@ -368,7 +372,7 @@ $env:DRAWIO_PATH = "D:\Apps\draw.io\draw.io.exe"
 
 - 实时工具目前主要面向可编辑的 draw.io 图元。显微照片、热图和复杂数据图可能需要后续增加专门的实时图片插入工具；
 - 最终还原度取决于参考图分辨率，以及内容是否适合用 draw.io 图元表达；
-- v1.0.0 已在 Windows 上测试，macOS/Linux 暂为尽力支持，欢迎提交测试反馈。
+- 当前已在 Windows 上测试，macOS/Linux 暂为尽力支持，欢迎提交测试反馈。
 
 ## Contributing / 参与贡献
 
