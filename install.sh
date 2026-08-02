@@ -4,8 +4,6 @@ set -euo pipefail
 REPOSITORY="https://github.com/vector4wang/drawio-scientific-illustrator.git"
 INSTALL_DIR="${1:-$HOME/.codex/marketplaces/drawio-scientific-illustrator}"
 PLUGIN="drawio-scientific-illustrator@drawio-scientific-tools"
-CLAUDE_SKILL_NAME="recreate-scientific-figure-in-drawio"
-CLAUDE_SKILL_DIR="$HOME/.claude/skills/$CLAUDE_SKILL_NAME"
 CLAUDE_SKILL_NAME_LIVE="drawio-live"
 CLAUDE_SKILL_DIR_LIVE="$HOME/.claude/skills/$CLAUDE_SKILL_NAME_LIVE"
 LINK_MODE=false
@@ -62,20 +60,6 @@ fi
 
 # ── Claude Code setup ──
 if [[ $HAS_CLAUDE -eq 1 ]]; then
-  # Install recreate-scientific-figure-in-drawio skill
-  mkdir -p "$CLAUDE_SKILL_DIR"
-  SKILL_SRC="$INSTALL_DIR/claude-code/skills/$CLAUDE_SKILL_NAME/SKILL.md"
-  SKILL_DST="$CLAUDE_SKILL_DIR/SKILL.md"
-
-  if $LINK_MODE; then
-    rm -f "$SKILL_DST"
-    ln -sf "$SKILL_SRC" "$SKILL_DST"
-    INSTALLED+=("Claude Code: skill symlink → $SKILL_SRC")
-  else
-    cp "$SKILL_SRC" "$SKILL_DST"
-    INSTALLED+=("Claude Code: skill installed to $CLAUDE_SKILL_DIR")
-  fi
-
   # Install drawio-live skill
   mkdir -p "$CLAUDE_SKILL_DIR_LIVE"
   SKILL_SRC_LIVE="$INSTALL_DIR/claude-code/skills/$CLAUDE_SKILL_NAME_LIVE/SKILL.md"

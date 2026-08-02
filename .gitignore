@@ -3,3 +3,8 @@ Thumbs.db
 node_modules/
 *.log
 .drawio-live-mcp/
+
+# Local session state (do not commit)
+.claude/
+.claude-bridge/
+.$*.dtmp

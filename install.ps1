@@ -6,8 +6,6 @@ param(
 $ErrorActionPreference = "Stop"
 $Repository = "https://github.com/vector4wang/drawio-scientific-illustrator.git"
 $Plugin = "drawio-scientific-illustrator@drawio-scientific-tools"
-$ClaudeSkillName = "recreate-scientific-figure-in-drawio"
-$ClaudeSkillDir = "$HOME\.claude\skills\$ClaudeSkillName"
 $ClaudeSkillNameLive = "drawio-live"
 $ClaudeSkillDirLive = "$HOME\.claude\skills\$ClaudeSkillNameLive"
 
@@ -45,20 +43,6 @@ if ($HasCodex) {
 
 # Claude Code setup
 if ($HasClaude) {
-  # Install recreate-scientific-figure-in-drawio skill
-  New-Item -ItemType Directory -Force -Path $ClaudeSkillDir | Out-Null
-  $SkillSource = Join-Path $InstallDir "claude-code\skills\$ClaudeSkillName\SKILL.md"
-  $SkillTarget = Join-Path $ClaudeSkillDir "SKILL.md"
-
-  if ($Link) {
-    if (Test-Path $SkillTarget) { Remove-Item $SkillTarget -Force }
-    New-Item -ItemType SymbolicLink -Path $SkillTarget -Target $SkillSource | Out-Null
-    $Installed += "Claude Code: skill symlink -> $SkillSource"
-  } else {
-    Copy-Item $SkillSource $SkillTarget -Force
-    $Installed += "Claude Code: skill installed to $ClaudeSkillDir"
-  }
-
   # Install drawio-live skill
   New-Item -ItemType Directory -Force -Path $ClaudeSkillDirLive | Out-Null
   $SkillSourceLive = Join-Path $InstallDir "claude-code\skills\$ClaudeSkillNameLive\SKILL.md"
