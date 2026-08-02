@@ -1,7 +1,0 @@
-[
-  {"tool": "drawio_live_search_shapes", "args": {"keywords": ["database", "cylinder", "storage"]}},
-  {"tool": "drawio_live_search_shapes", "args": {"keywords": ["server", "application", "service"]}},
-  {"tool": "drawio_live_search_shapes", "args": {"keywords": ["queue", "kafka", "message"]}},
-  {"tool": "drawio_live_search_shapes", "args": {"keywords": ["cloud", "api", "gateway"]}},
-  {"tool": "drawio_live_search_shapes", "args": {"keywords": ["user", "actor", "client"]}}
-]

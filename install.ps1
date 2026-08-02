@@ -20,6 +20,10 @@ if (-not $HasCodex -and -not $HasClaude) {
   throw "Neither Codex CLI nor Claude Code CLI was found. Install at least one, then run this installer again."
 }
 
+# When only Claude Code is present the marketplace CLI is unavailable;
+# the user has to register and install the plugin through slash commands.
+$NeedsManualClaudeInstall = (-not $HasCodex) -and $HasClaude
+
 # Clone or update the repository (shared)
 if (Test-Path (Join-Path $InstallDir ".git")) {
   Write-Host "Updating existing installation at $InstallDir ..."
@@ -71,8 +75,15 @@ if ($HasCodex) {
   Write-Host "  -> Restart Codex and start a new task before first use."
 }
 if ($HasClaude) {
-  Write-Host "  -> Claude Code: open '$InstallDir' as your project directory."
-  Write-Host "     The .mcp.json at the project root will be auto-detected."
+  if ($NeedsManualClaudeInstall) {
+    Write-Host "  -> Claude Code: paste these two slash commands in a session:"
+    Write-Host ""
+    Write-Host "      /plugin marketplace add '$InstallDir'"
+    Write-Host "      /plugin install $Plugin"
+  } else {
+    Write-Host "  -> Claude Code: open '$InstallDir' as your project directory."
+    Write-Host "     The .mcp.json at the project root will be auto-detected."
+  }
   if (-not $Link) {
     Write-Host "     Tip: re-run with -Link to auto-update the skill on git pull."
   }

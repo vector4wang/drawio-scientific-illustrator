@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
-import { execFile, spawn } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
 import {
-  SERVER_VERSION, xmlEscape, ensureStyle, setStyle, shapeStyle,
+  SERVER_VERSION, xmlEscape, ensureStyle, setStyle,
   createMcpTransport,
 } from "./shared.mjs";
 import { drawioInstallHint, resolveDrawioExecutable } from "./drawio-path.mjs";
@@ -27,151 +27,6 @@ const tools = [
     name: "drawio_status",
     description: "Check the local draw.io desktop CLI, version, default output directory, and supported operations.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
-  },
-  {
-    name: "drawio_create_diagram",
-    description:
-      "Create an editable uncompressed .drawio file from structured vertices and edges. Use absolute output paths. Supports common scientific-diagram shapes, text, embedded local images, custom draw.io styles, groups/layers, and routed arrows.",
-    inputSchema: {
-      type: "object",
-      required: ["output_path", "vertices"],
-      properties: {
-        output_path: { type: "string", description: "Absolute .drawio output path." },
-        title: { type: "string", default: "Scientific figure" },
-        page_name: { type: "string", default: "Figure" },
-        canvas: {
-          type: "object",
-          properties: {
-            width: { type: "number", minimum: 100, maximum: 20000, default: 1600 },
-            height: { type: "number", minimum: 100, maximum: 20000, default: 1000 },
-            background: { type: "string", description: "Hex color such as #ffffff." },
-            grid: { type: "boolean", default: true },
-          },
-          additionalProperties: false,
-        },
-        layers: {
-          type: "array",
-          maxItems: 50,
-          items: {
-            type: "object",
-            required: ["id", "name"],
-            properties: { id: { type: "string" }, name: { type: "string" } },
-            additionalProperties: false,
-          },
-        },
-        vertices: {
-          type: "array",
-          maxItems: 1000,
-          items: {
-            type: "object",
-            required: ["id", "x", "y", "width", "height"],
-            properties: {
-              id: { type: "string" },
-              label: { type: "string", default: "" },
-              shape: {
-                type: "string",
-                enum: ["rectangle", "rounded", "ellipse", "diamond", "cylinder", "hexagon", "triangle", "parallelogram", "cloud", "text", "image", "group", "swimlane"],
-                default: "rounded",
-              },
-              x: { type: "number" },
-              y: { type: "number" },
-              width: { type: "number", exclusiveMinimum: 0 },
-              height: { type: "number", exclusiveMinimum: 0 },
-              parent: { type: "string", default: "1" },
-              style: { type: "string", description: "Full draw.io style override." },
-              custom_style: { type: "string", description: "Style entries appended to the generated style." },
-              fill_color: { type: "string" },
-              stroke_color: { type: "string" },
-              font_color: { type: "string" },
-              font_size: { type: "number", minimum: 1, maximum: 200 },
-              font_style: { type: "integer", minimum: 0, maximum: 7 },
-              stroke_width: { type: "number", minimum: 0, maximum: 50 },
-              opacity: { type: "number", minimum: 0, maximum: 100 },
-              rotation: { type: "number", minimum: -360, maximum: 360 },
-              dashed: { type: "boolean" },
-              image_path: { type: "string", description: "Absolute local path for an embedded image vertex." },
-              locked: { type: "boolean", default: false },
-            },
-            additionalProperties: false,
-          },
-        },
-        edges: {
-          type: "array",
-          maxItems: 2000,
-          default: [],
-          items: {
-            type: "object",
-            required: ["id"],
-            properties: {
-              id: { type: "string" },
-              label: { type: "string", default: "" },
-              source: { type: "string" },
-              target: { type: "string" },
-              parent: { type: "string", default: "1" },
-              style: { type: "string", description: "Full draw.io edge style override." },
-              custom_style: { type: "string" },
-              color: { type: "string" },
-              width: { type: "number", minimum: 0, maximum: 50 },
-              dashed: { type: "boolean" },
-              curved: { type: "boolean" },
-              animated: { type: "boolean" },
-              start_arrow: { type: "string" },
-              end_arrow: { type: "string" },
-              exit_x: { type: "number", minimum: 0, maximum: 1 },
-              exit_y: { type: "number", minimum: 0, maximum: 1 },
-              entry_x: { type: "number", minimum: 0, maximum: 1 },
-              entry_y: { type: "number", minimum: 0, maximum: 1 },
-              source_point: { $ref: "#/$defs/point" },
-              target_point: { $ref: "#/$defs/point" },
-              waypoints: { type: "array", maxItems: 100, items: { $ref: "#/$defs/point" } },
-            },
-            additionalProperties: false,
-          },
-        },
-        overwrite: { type: "boolean", default: false },
-      },
-      $defs: {
-        point: {
-          type: "object",
-          required: ["x", "y"],
-          properties: { x: { type: "number" }, y: { type: "number" } },
-          additionalProperties: false,
-        },
-      },
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "drawio_create_trace_document",
-    description:
-      "Create a .drawio tracing document with a local PNG/JPEG/SVG reference embedded as a locked, low-opacity background and an editable drawing layer above it. Useful after visually decomposing a static scientific figure.",
-    inputSchema: {
-      type: "object",
-      required: ["reference_path", "output_path"],
-      properties: {
-        reference_path: { type: "string", description: "Absolute path to a PNG, JPEG, or SVG reference image." },
-        output_path: { type: "string", description: "Absolute .drawio output path." },
-        opacity: { type: "number", minimum: 1, maximum: 100, default: 25 },
-        max_dimension: { type: "number", minimum: 200, maximum: 5000, default: 1600 },
-        overwrite: { type: "boolean", default: false },
-      },
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "drawio_write_xml",
-    description:
-      "Validate and write full uncompressed mxGraph XML to a .drawio file for high-fidelity diagrams that exceed the structured tool's shape vocabulary.",
-    inputSchema: {
-      type: "object",
-      required: ["output_path", "xml"],
-      properties: {
-        output_path: { type: "string", description: "Absolute .drawio output path." },
-        xml: { type: "string", description: "Uncompressed XML beginning with <mxfile>." },
-        overwrite: { type: "boolean", default: false },
-      },
-      additionalProperties: false,
-    },
   },
   {
     name: "drawio_validate",
@@ -255,16 +110,6 @@ const tools = [
         page_index: { type: "integer", minimum: 0 },
         overwrite: { type: "boolean", default: false },
       },
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "drawio_open",
-    description: "Open a .drawio file in the installed draw.io desktop application for manual fine-tuning.",
-    inputSchema: {
-      type: "object",
-      required: ["input_path"],
-      properties: { input_path: { type: "string" } },
       additionalProperties: false,
     },
   },
@@ -485,142 +330,6 @@ function inspectXml(xml) {
 
 // ── 图片/图表生成 ──
 
-async function imageDataUri(imagePath) {
-  const resolved = path.resolve(imagePath);
-  const data = await fs.readFile(resolved);
-  const ext = path.extname(resolved).toLowerCase();
-  const mime = ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : ext === ".svg" ? "image/svg+xml" : null;
-  if (!mime) throw new Error(`Unsupported image format '${ext}'. Use PNG, JPEG, or SVG.`);
-  return { dataUri: `data:${mime};base64,${data.toString("base64")}`, data, ext };
-}
-
-function readImageSize(data, ext) {
-  if (ext === ".png" && data.length >= 24 && data.toString("ascii", 1, 4) === "PNG") {
-    return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
-  }
-  if (ext === ".jpg" || ext === ".jpeg") {
-    let offset = 2;
-    while (offset + 9 < data.length) {
-      if (data[offset] !== 0xff) { offset += 1; continue; }
-      const marker = data[offset + 1];
-      const len = data.readUInt16BE(offset + 2);
-      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) {
-        return { height: data.readUInt16BE(offset + 5), width: data.readUInt16BE(offset + 7) };
-      }
-      if (!len) break;
-      offset += 2 + len;
-    }
-  }
-  if (ext === ".svg") {
-    const text = data.toString("utf8");
-    const viewBox = text.match(/viewBox\s*=\s*["']\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)/i);
-    const w = text.match(/\bwidth\s*=\s*["']([\d.]+)/i);
-    const h = text.match(/\bheight\s*=\s*["']([\d.]+)/i);
-    if (w && h) return { width: Number(w[1]), height: Number(h[1]) };
-    if (viewBox) return { width: Number(viewBox[1]), height: Number(viewBox[2]) };
-  }
-  return { width: 1200, height: 800 };
-}
-
-async function vertexXml(v) {
-  if (!v.id) throw new Error("Every vertex requires a non-empty id.");
-  let style = v.style ? ensureStyle(v.style) : shapeStyle(v.shape);
-  if (v.image_path) {
-    const { dataUri } = await imageDataUri(v.image_path);
-    style = setStyle(style, "image", dataUri);
-  }
-  style = setStyle(style, "fillColor", v.fill_color);
-  style = setStyle(style, "strokeColor", v.stroke_color);
-  style = setStyle(style, "fontColor", v.font_color);
-  style = setStyle(style, "fontSize", v.font_size);
-  style = setStyle(style, "fontStyle", v.font_style);
-  style = setStyle(style, "strokeWidth", v.stroke_width);
-  style = setStyle(style, "opacity", v.opacity);
-  style = setStyle(style, "rotation", v.rotation);
-  if (v.dashed !== undefined) style = setStyle(style, "dashed", v.dashed ? 1 : 0);
-  if (v.locked) {
-    for (const [k, val] of Object.entries({ locked: 1, movable: 0, resizable: 0, rotatable: 0, deletable: 0 })) style = setStyle(style, k, val);
-  }
-  style = `${ensureStyle(style)}${ensureStyle(v.custom_style)}`;
-  return `        <mxCell id="${xmlEscape(v.id)}" value="${xmlEscape(v.label || "")}" style="${xmlEscape(style)}" vertex="1" parent="${xmlEscape(v.parent || "1")}">\n          <mxGeometry x="${Number(v.x)}" y="${Number(v.y)}" width="${Number(v.width)}" height="${Number(v.height)}" as="geometry" />\n        </mxCell>`;
-}
-
-function edgeXml(e) {
-  if (!e.id) throw new Error("Every edge requires a non-empty id.");
-  const floating = e.source_point && e.target_point;
-  if (!floating && (!e.source || !e.target)) throw new Error(`Edge '${e.id}' requires source and target, or source_point and target_point.`);
-  let style = e.style ? ensureStyle(e.style) : DEFAULT_EDGE_STYLE;
-  style = setStyle(style, "strokeColor", e.color);
-  style = setStyle(style, "strokeWidth", e.width);
-  if (e.dashed !== undefined) style = setStyle(style, "dashed", e.dashed ? 1 : 0);
-  if (e.curved !== undefined) style = setStyle(style, "curved", e.curved ? 1 : 0);
-  if (e.animated !== undefined) style = setStyle(style, "flowAnimation", e.animated ? 1 : 0);
-  style = setStyle(style, "startArrow", e.start_arrow);
-  style = setStyle(style, "endArrow", e.end_arrow);
-  style = setStyle(style, "exitX", e.exit_x);
-  style = setStyle(style, "exitY", e.exit_y);
-  style = setStyle(style, "entryX", e.entry_x);
-  style = setStyle(style, "entryY", e.entry_y);
-  style = `${ensureStyle(style)}${ensureStyle(e.custom_style)}`;
-  const connection = floating ? "" : ` source="${xmlEscape(e.source)}" target="${xmlEscape(e.target)}"`;
-  const points = [];
-  if (floating) {
-    points.push(`            <mxPoint x="${Number(e.source_point.x)}" y="${Number(e.source_point.y)}" as="sourcePoint" />`);
-    points.push(`            <mxPoint x="${Number(e.target_point.x)}" y="${Number(e.target_point.y)}" as="targetPoint" />`);
-  }
-  if (e.waypoints?.length) {
-    points.push("            <Array as=\"points\">");
-    for (const p of e.waypoints) points.push(`              <mxPoint x="${Number(p.x)}" y="${Number(p.y)}" />`);
-    points.push("            </Array>");
-  }
-  const geometry = points.length
-    ? `          <mxGeometry relative="1" as="geometry">\n${points.join("\n")}\n          </mxGeometry>`
-    : "          <mxGeometry relative=\"1\" as=\"geometry\" />";
-  return `        <mxCell id="${xmlEscape(e.id)}" value="${xmlEscape(e.label || "")}" style="${xmlEscape(style)}" edge="1" parent="${xmlEscape(e.parent || "1")}"${connection}>\n${geometry}\n        </mxCell>`;
-}
-
-async function buildDiagram(args) {
-  const canvas = { width: 1600, height: 1000, grid: true, ...(args.canvas || {}) };
-  const layers = args.layers?.length ? args.layers : [];
-  const layerXml = layers.map((l) => `        <mxCell id="${xmlEscape(l.id)}" value="${xmlEscape(l.name)}" parent="0" />`);
-  const vertices = [];
-  for (const vertex of args.vertices || []) vertices.push(await vertexXml(vertex));
-  const edges = (args.edges || []).map(edgeXml);
-  const titleId = "__figure_title__";
-  const allIds = new Set([...(args.vertices || []).map((v) => v.id), ...(args.edges || []).map((e) => e.id), ...layers.map((l) => l.id)]);
-  if (allIds.has("0") || allIds.has("1") || allIds.has(titleId)) throw new Error("Ids 0, 1, and __figure_title__ are reserved.");
-  const title = `        <mxCell id="${titleId}" value="${xmlEscape(args.title || "Scientific figure")}" style="text;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;html=1;fontSize=22;fontStyle=1;fontColor=#111827;" vertex="1" parent="1">\n          <mxGeometry x="40" y="20" width="${Math.max(200, canvas.width - 80)}" height="40" as="geometry" />\n        </mxCell>`;
-  const backgroundAttr = canvas.background ? ` background="${xmlEscape(canvas.background)}"` : "";
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile host="Electron" modified="${new Date().toISOString()}" version="30.3.6">\n  <diagram id="page-1" name="${xmlEscape(args.page_name || "Figure")}">\n    <mxGraphModel dx="1422" dy="762" grid="${canvas.grid ? 1 : 0}" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="${Number(canvas.width)}" pageHeight="${Number(canvas.height)}" math="0" shadow="0"${backgroundAttr}>\n      <root>\n        <mxCell id="0" />\n        <mxCell id="1" parent="0" />\n${layerXml.join("\n")}${layerXml.length ? "\n" : ""}${title}\n${vertices.join("\n")}\n${edges.join("\n")}\n      </root>\n    </mxGraphModel>\n  </diagram>\n</mxfile>\n`;
-}
-
-async function writeValidatedXml(outputPath, xml, overwrite) {
-  const target = normalizeOutputPath(outputPath);
-  const report = inspectXml(xml);
-  if (!report.valid) throw new Error(`Invalid draw.io XML:\n${report.errors.join("\n")}`);
-  await assertWritable(target, overwrite);
-  await fs.writeFile(target, xml, "utf8");
-  return { output_path: target, bytes: Buffer.byteLength(xml, "utf8"), validation: { valid: true, warnings: report.warnings, pages: report.pages } };
-}
-
-async function createTraceDocument(args) {
-  const reference = path.resolve(args.reference_path);
-  const target = normalizeOutputPath(args.output_path);
-  const { dataUri, data, ext } = await imageDataUri(reference);
-  const original = readImageSize(data, ext);
-  const maxDimension = args.max_dimension || 1600;
-  const scale = Math.min(1, maxDimension / Math.max(original.width, original.height));
-  const width = Math.max(1, Math.round(original.width * scale));
-  const height = Math.max(1, Math.round(original.height * scale));
-  const pageWidth = width + 80;
-  const pageHeight = height + 140;
-  const opacity = args.opacity ?? 25;
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile host="Electron" modified="${new Date().toISOString()}" version="30.3.6">\n  <diagram id="trace-page" name="Trace">\n    <mxGraphModel grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="${pageWidth}" pageHeight="${pageHeight}" math="0" shadow="0">\n      <root>\n        <mxCell id="0" />\n        <mxCell id="1" parent="0" />\n        <mxCell id="reference-layer" value="Reference (${opacity}% opacity)" parent="0" />\n        <mxCell id="drawing-layer" value="Editable drawing" parent="0" />\n        <mxCell id="trace-title" value="Trace and rebuild on the Editable drawing layer" style="text;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;html=1;fontSize=20;fontStyle=1;fontColor=#111827;" vertex="1" parent="drawing-layer">\n          <mxGeometry x="40" y="20" width="${width}" height="40" as="geometry" />\n        </mxCell>\n        <mxCell id="reference-image" value="" style="shape=image;imageAspect=0;aspect=fixed;html=1;image=${xmlEscape(dataUri)};opacity=${opacity};locked=1;movable=0;resizable=0;rotatable=0;deletable=0;selectable=0;" vertex="1" parent="reference-layer">\n          <mxGeometry x="40" y="80" width="${width}" height="${height}" as="geometry" />\n        </mxCell>\n      </root>\n    </mxGraphModel>\n  </diagram>\n</mxfile>\n`;
-  const result = await writeValidatedXml(target, xml, args.overwrite);
-  return { ...result, reference_path: reference, original_size: original, embedded_size: { width, height }, opacity, drawing_layer: "drawing-layer" };
-}
-
-// ── 导出 ──
 
 async function drawioVersion() {
   try {
@@ -679,18 +388,6 @@ async function exportDiagram(args) {
 async function handleTool(name, args = {}) {
   let value;
   switch (name) {
-    case "drawio_status":
-      value = { ...(await drawioVersion()), server_version: SERVER_VERSION, node: process.version, default_output_directory: path.join(os.homedir(), "Documents"), supported_formats: ["drawio", "png", "svg", "pdf", "jpg"] };
-      break;
-    case "drawio_create_diagram":
-      value = await writeValidatedXml(args.output_path, await buildDiagram(args), args.overwrite);
-      break;
-    case "drawio_create_trace_document":
-      value = await createTraceDocument(args);
-      break;
-    case "drawio_write_xml":
-      value = await writeValidatedXml(args.output_path, args.xml, args.overwrite);
-      break;
     case "drawio_validate": {
       const input = normalizeOutputPath(args.input_path);
       const xml = await fs.readFile(input, "utf8");
@@ -739,14 +436,6 @@ async function handleTool(name, args = {}) {
     case "drawio_export":
       value = await exportDiagram(args);
       break;
-    case "drawio_open": {
-      const input = normalizeOutputPath(args.input_path);
-      await fs.access(input);
-      const child = spawn(DRAWIO.executable, [input], { detached: true, stdio: "ignore", windowsHide: false });
-      child.unref();
-      value = { opened: true, input_path: input, application: DRAWIO.executable };
-      break;
-    }
     default:
       throw new Error(`Unknown tool: ${name}`);
   }

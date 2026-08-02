@@ -36,6 +36,13 @@ if [[ $HAS_CODEX -eq 0 && $HAS_CLAUDE -eq 0 ]]; then
   exit 1
 fi
 
+# When only Claude Code is present the marketplace CLI is unavailable;
+# the user has to register and install the plugin through slash commands.
+NEEDS_MANUAL_CLAUDE_INSTALL=0
+if [[ $HAS_CODEX -eq 0 && $HAS_CLAUDE -eq 1 ]]; then
+  NEEDS_MANUAL_CLAUDE_INSTALL=1
+fi
+
 # ── Clone or update the repository (shared) ──
 if [[ -d "$INSTALL_DIR/.git" ]]; then
   echo "Updating existing installation at $INSTALL_DIR ..."
@@ -91,8 +98,15 @@ if [[ $HAS_CODEX -eq 1 ]]; then
   echo "  → Restart Codex and start a new task before first use."
 fi
 if [[ $HAS_CLAUDE -eq 1 ]]; then
-  echo "  → Claude Code: open '$INSTALL_DIR' as your project directory."
-  echo "    The .mcp.json at the project root will be auto-detected."
+  if [[ $NEEDS_MANUAL_CLAUDE_INSTALL -eq 1 ]]; then
+    echo "  → Claude Code: paste these two slash commands in a session:"
+    echo ""
+    echo "      /plugin marketplace add '$INSTALL_DIR'"
+    echo "      /plugin install ${PLUGIN}"
+  else
+    echo "  → Claude Code: open '$INSTALL_DIR' as your project directory."
+    echo "    The .mcp.json at the project root will be auto-detected."
+  fi
   if ! $LINK_MODE; then
     echo "    Tip: re-run with --link to auto-update the skill on git pull."
   fi
