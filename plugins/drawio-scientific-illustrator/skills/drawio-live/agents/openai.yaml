@@ -1,0 +1,4 @@
+interface:
+  display_name: "Draw.io Live Diagrammer"
+  short_description: "Draw diagrams live in draw.io from your description"
+  default_prompt: "Draw this diagram live in draw.io step by step from my description, then save and export a preview."

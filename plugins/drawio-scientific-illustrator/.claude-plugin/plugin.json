@@ -1,0 +1,15 @@
+{
+  "name": "drawio-scientific-illustrator",
+  "version": "1.2.0",
+  "description": "Control the live draw.io canvas through draw.io's own graph API so users can watch diagrams appear step by step from a description, then save, validate, and export them.",
+  "author": {
+    "name": "vector4wang",
+    "url": "https://github.com/vector4wang"
+  },
+  "homepage": "https://github.com/vector4wang/drawio-scientific-illustrator#readme",
+  "repository": "https://github.com/vector4wang/drawio-scientific-illustrator",
+  "license": "MIT",
+  "keywords": ["drawio", "scientific-figure", "diagram", "mcp"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}
