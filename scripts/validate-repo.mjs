@@ -15,12 +15,12 @@ const manifest = JSON.parse(await fs.readFile(path.join(pluginRoot, ".codex-plug
 const mcp = JSON.parse(await fs.readFile(path.join(pluginRoot, ".mcp.json"), "utf8"));
 
 if (entry.name !== manifest.name) throw new Error("Marketplace and manifest plugin names differ.");
-if (manifest.version !== "1.0.0") throw new Error("Unexpected public release version.");
+if (manifest.version !== "1.2.0") throw new Error(`Unexpected manifest version: ${manifest.version}`);
 if (!mcp.mcpServers?.["drawio-live"] || !mcp.mcpServers?.["drawio-file-utils"]) throw new Error("Required MCP servers are missing.");
 
 // ── Claude Code config ──
 const claudeMcpPath = path.join(root, ".mcp.json");
-const claudeSkillFile = path.join(root, "claude-code", "skills", "recreate-scientific-figure-in-drawio", "SKILL.md");
+const claudeSkillFile = path.join(root, "claude-code", "skills", "drawio-live", "SKILL.md");
 
 const claudeMcp = JSON.parse(await fs.readFile(claudeMcpPath, "utf8"));
 if (!claudeMcp.mcpServers?.["drawio-live"] || !claudeMcp.mcpServers?.["drawio-file-utils"]) {
