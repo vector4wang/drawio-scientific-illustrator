@@ -1,13 +1,13 @@
 ---
 name: drawio-live
-description: Draw diagrams live in the visible draw.io desktop canvas from a text description, using draw.io's own graph API through a localhost-only MCP server. Use when the user wants to watch an architecture diagram, flowchart, network diagram, sequence/process diagram, or any visualization appear shape by shape in draw.io. Trigger phrases: "draw a diagram", "create a flowchart", "画出", "绘制", "用 draw.io", "architecture diagram", "绘一张图". Output: editable .drawio + PNG/SVG/PDF.
-version: 1.2.0
+description: Draw diagrams live in the visible draw.io desktop canvas from a text description, using draw.io's own graph API through a localhost-only MCP server. Use when the user wants to watch an architecture diagram, flowchart, network diagram, sequence/process diagram, or any visualization appear shape by shape in draw.io. Trigger phrases: "draw a diagram", "create a flowchart", "画出", "绘制", "用 draw.io", "architecture diagram", "/drawio-live". Output: editable .drawio + PNG/SVG/PDF.
+version: 1.3.0
 allowed-tools: mcp__drawio-live__*,mcp__drawio-file-utils__*
 ---
 
 # Draw Diagrams Live in draw.io
 
-Shapes, labels, connectors, and styling appear in the visible canvas in real time. Save as `.drawio` only when the live drawing is complete.
+Each shape, label, and connector appears in the visible canvas in real time. Adapt the layout, color palette, and density to the project — do not force a fixed template.
 
 ## Hard boundary (NEVER violate)
 
@@ -16,97 +16,121 @@ Shapes, labels, connectors, and styling appear in the visible canvas in real tim
 - Never pre-generate XML and then "open" it as the drawing method.
 - Renderer screenshots are allowed only to inspect the draw.io canvas itself.
 
-## Design tokens (mandatory constants)
+## Step 1: Choose a layout (BEFORE any tool call)
+
+Pick the layout that fits the project. Use the first one that matches.
+
+| Project shape | Layout | When |
+|---|---|---|
+| Multi-tier system (5-7 layers) | **Vertical stack** with banded sections | Microservices, MCP, layered apps |
+| Pipeline / data flow / user journey | **Horizontal flow** left → right | CI/CD, ETL, request lifecycle |
+| Central service with N dependents | **Hub-and-spoke** | API gateway, plugin host, message broker |
+| Comparison / matrix | **2-D matrix** with axes | A vs B, before/after, options |
+| Hierarchy / org / taxonomy | **Tree** top-down | Org chart, classification, file tree |
+| Time-based / sequence | **Timeline** horizontal | Release roadmap, evolution, phases |
+| Business process | **BPMN pool + lanes** | Workflow approvals, incident response |
+
+If two layouts fit, prefer the one that matches the project's natural reading direction (top-to-bottom for stacks, left-to-right for flows).
+
+## Step 2: Choose a palette
+
+Default palette (7 semantic categories, generic projects):
+
+| Category | Fill | Stroke | When |
+|---|---|---|---|
+| Edge / Network | `#F3EBFF` | `#8C4FFF` | CDN, DNS, LB, gateway |
+| Compute | `#FFF1E5` | `#ED7100` | EC2, ECS, Lambda, VM |
+| Data | `#E8EBFD` | `#3B48CC` | RDS, cache, DB, queue |
+| Storage | `#F2F3F3` | `#7D8998` | Object storage, backup |
+| Security | `#FCE8EB` | `#DD344C` | WAF, IAM, vault |
+| Operations | `#E6F8F4` | `#01A88D` | Monitoring, logging |
+| Integration | `#FCE4F0` | `#E7157B` | SES, SQS, SNS, EventBridge |
+
+**Override when the project implies a theme**:
+- AWS-heavy → use AWS official colors (`#FF9900` for compute, `#7D8998` for storage, etc.) plus the AWS stencil library.
+- GCP-heavy → use GCP blues (`#4285F4`, `#34A853`).
+- Azure-heavy → use Azure blues (`#0078D4`, `#50E6FF`).
+- Kubernetes-heavy → use `#326CE5` as the primary brand color.
+- User supplies a brand color → derive: 12% tint of brand for fill, brand for stroke.
+- Editorial / scientific / academic → drop the 7-category palette entirely; use 1-2 neutral grays + 1 accent.
+
+## Step 3: Pick a density
+
+| Component count | Card size | Spacing | Edge label |
+|---|---|---|---|
+| ≤ 8 | 280 × 100 (large) | 40 px gaps | Every edge |
+| 9-20 | 240 × 80 (standard) | 24 px gaps | Only cross-section edges |
+| 21-40 | 200 × 80 (compact) | 16 px gaps | None |
+| > 40 | 160 × 60 + matrix layout | 8 px gaps | None |
+
+If the project mixes 2-3 scales, use the medium density for the body and group large components (e.g. central service) as oversized anchors.
+
+## Step 4: Default tokens (override when the project needs something else)
 
 ```yaml
-canvas_width: 1700              # standard page width
-grid_unit: 8                    # all coordinates snap to multiples of 8
-stroke_width: 1.5               # default edge/card stroke
-stroke_thin: 1                  # dashed / secondary edges
-stroke_bold: 2.5                # emphasis edges (data flow into draw.io)
-corner_radius: 8                # all rounded cards
-font_title: 22px Bold           # title
-font_section: 11px SemiBold     # layer / section labels
-font_card: 14px Bold            # card title
-font_desc: 11px Regular         # card description
-font_meta: 10px Regular         # metadata / category list
-font_footer: 9px Italic         # footer line
+canvas_width: 1700            # reduce to 1400 for narrow projects (e.g. single-tier)
+grid_unit: 8                  # all coordinates snap to multiples of 8
+stroke_default: 1.5
+stroke_emphasis: 2.5
+stroke_thin: 1
+corner_radius: 8
+font_title: 22px Bold
+font_section: 11px SemiBold
+font_card: 14px Bold
+font_desc: 11px Regular
+font_meta: 10px Regular
+font_footer: 9px Italic
 ```
 
-## Pre-drawing analysis (DO THIS FIRST, in your head, before any tool call)
+**Adjustments** (apply when warranted):
+- For dense diagrams (> 30 components), drop `font_card` to 12 px and `font_desc` to 10 px.
+- For one-page summary diagrams, bump `font_title` to 28 px.
+- For technical / spec diagrams, switch `font_title` to a monospace family.
+- For dark-mode exports, swap to a dark background and use lighter fills.
 
-1. **Identify 3-6 layers** in the request (e.g. Edge → VPC → Subnets → Cross-cutting).
-2. **For every component, pick a category** from the 7 below — this drives its color and shape.
-3. **Decide if a cloud-specific stencil exists** (search for `aws`, `azure`, `gcp`, `kubernetes`, `bpmn`, `cisco` in `drawio_live_search_shapes`). If yes → use it. If no → fall back to a semantic basic shape (cylinder / diamond / cloud / rounded).
-4. **Plan canvas height** = `200 + 180 × layers + 100` (cap at 2200). Width is always 1700.
+## Step 5: Shape → semantic role
 
-## Color → category mapping (the only 7 colors you may use)
+Decision priority (highest → lowest):
 
-| Category | Fill (12 % tint) | Stroke (full) | Stripe (full) | When |
-|---|---|---|---|---|
-| Network / Edge | `#F3EBFF` | `#8C4FFF` | `#8C4FFF` | CDN, DNS, LB, gateway, API |
-| Compute | `#FFF1E5` | `#ED7100` | `#ED7100` | EC2, ECS, EKS, Lambda, VM |
-| Data | `#E8EBFD` | `#3B48CC` | `#3B48CC` | RDS, ElastiCache, S3, DB, queue |
-| Storage | `#F2F3F3` | `#7D8998` | `#7D8998` | Object storage, backup, archive |
-| Security | `#FCE8EB` | `#DD344C` | `#DD344C` | WAF, Shield, IAM, Vault, Cognito |
-| Operations | `#E6F8F4` | `#01A88D` | `#01A88D` | CloudWatch, monitoring, logging |
-| Integration | `#FCE4F0` | `#E7157B` | `#E7157B` | SES, SQS, SNS, EventBridge, API GW |
+1. **Exact cloud stencil** (AWS / Azure / GCP / Cisco / Kubernetes / BPMN) — search first, use immediately.
+2. **Semantic icon** — `shape=umlActor` (user), `shape=cylinder3` (DB), `shape=cloud` (external system).
+3. **Flowchart shape** — `shape=diamond` (decision), `shape=parallelogram` (I/O), `shape=ellipse` (start/end).
+4. **BPMN** — `bpmn.task`, `bpmn.gateway`, `bpmn.pool`, `bpmn.lane`.
+5. **Generic rounded** — last resort only.
 
-**Layer backgrounds** (sub-bands inside a dashed parent) may use the same fill at lower opacity or none.
+Cloud stencil naming: `mxgraph.aws4.cloudfront`, `mxgraph.azure.sql_database`, `mxgraph.gcp.cloud_run`, `mxgraph.kubernetes.pod`, `mxgraph.cisco.routers.router`.
 
-## Shape → semantic role mapping (in priority order)
+## Step 6: Stencil usage (AWS / Azure / GCP)
 
-1. **Exact cloud stencil** (AWS / Azure / GCP / Cisco / Kubernetes) — search first, use immediately.
-2. **Semantic icon** — `shape=umlActor` (user), `shape=cylinder3` (DB), `shape=cloud` (external system), `mxgraph.bootstrap.user` (person).
-3. **BPMN/flowchart** — `bpmn.task`, `bpmn.gateway`, `shape=diamond` (decision), `shape=parallelogram` (I/O), `shape=ellipse` (start/end).
-4. **Generic rounded** — last resort only.
-
-**Cloud stencil naming**: `mxgraph.aws4.cloudfront`, `mxgraph.aws4.rds`, `mxgraph.azure.sql_database`, `mxgraph.gcp.cloud_run`, `mxgraph.kubernetes.pod`, `mxgraph.cisco.routers.router`.
-
-## Stencil usage rules (AWS / Azure / GCP)
-
-Always include these style keys together:
+Apply these style keys together:
 
 ```yaml
-sketch: 0           # no sketchy hand-drawn look
-outlineConnect: 0   # don't connect icon outline to label
+sketch: 0
+outlineConnect: 0
 html: 1
 dashed: 0
-fillColor: <brand>   # full color, e.g. #FF9900 for CloudFront
-strokeColor: #232F3E # dark neutral outline
+fillColor: <brand>
+strokeColor: #232F3E
 verticalLabelPosition: bottom
 labelPosition: center
 align: center
 verticalAlign: top
 fontSize: 12
-fontStyle: 1         # bold
+fontStyle: 1
 ```
 
 **Do NOT add a separate text cell** describing the icon — the stencil shows the name itself. Adding text next to the icon causes the "ALBApplication Load Balancer" truncation bug.
 
-## Layout grammar
-
-- **Title** at y=40, **subtitle** at y=78, single left-aligned line each.
-- **Layer band**: 22-px label at top-left inside a dashed border (e.g. `② VPC · 10.0.0.0/16`). Band height = `180 × cards_in_band + 40`.
-- **Card sizes** (use these, not ad-hoc):
-  - Standard: 240 × 80
-  - Wide (single-service per row): 480 × 80
-  - Tall (data tier, three-card row): 200 × 120
-  - Edge services: 280 × 100
-- **Card top stripe**: solid 4 px, full card width, category color.
-- **Card icon cell**: positioned 8 px below the stripe, 220 × 60 inside a 240 × 80 card, centered.
-- **Footer**: one line at y = pageHeight − 60, 9 px italic gray, centered.
-
-## Edge rules
+## Step 7: Edge rules
 
 - **Default**: stroke matches the source category color, 1.5 px, solid, arrow classic.
-- **Emphasis** (e.g. → draw.io desktop): 2.5 px solid.
+- **Emphasis** (e.g. → central service): 2.5 px solid.
 - **Secondary / monitoring / replication**: dashed `6 3`, 1.5 px.
 - **Label**: 10 px, fontColor = source category, labelBackgroundColor = `#FFFFFF`.
-- **Always orthogonal** (`edgeStyle=orthogonalEdgeStyle`).
-- **Do not add protocol labels** ("HTTPS:443", "SQL:3306") on every edge — they clutter. Reserve labels for cross-section crossings.
+- **Orthogonal** for stack and matrix layouts, **curved** for hub-and-spoke, **straight** for timelines.
+- **Skip protocol labels** ("HTTPS:443", "SQL:3306") unless the user explicitly asks for them.
 
-## Work sequence (the actual tool call order)
+## Step 8: Work sequence (the actual tool call order)
 
 ```
 1. drawio_live_launch      file_path=<user's .drawio or new>, step_delay_ms=350
@@ -116,10 +140,10 @@ fontStyle: 1         # bold
      drawio_live_switch_page
 4. drawio_live_search_shapes  for every distinct component (1 call per category keyword)
 5. drawio_live_draw_sequence  title + subtitle
-6. drawio_live_draw_sequence  layer band: label + dashed outer
-7. drawio_live_draw_sequence  cards in this band (box + stripe + icon, 1 call each)
-8. drawio_live_screenshot     # review the rendered band
-9. drawio_live_draw_sequence  edges between bands
+6. drawio_live_draw_sequence  outer skeleton (band, hub, lanes, or matrix frame)
+7. drawio_live_draw_sequence  components (box + stripe + icon, 1 call each)
+8. drawio_live_screenshot     # review the rendered layer
+9. drawio_live_draw_sequence  edges
 10. drawio_live_fit            # keep the evolving figure in view
 11. drawio_live_save_snapshot  output_path=<absolute .drawio path>
 12. drawio_validate           # check the saved file
@@ -127,36 +151,33 @@ fontStyle: 1         # bold
 14. drawio_export              format=svg, embed=true   # optional deliverable
 ```
 
-Run steps 5-9 in paced `draw_sequence` calls (each op a separate model update, with `step_delay_ms` ≥ 280). Run `screenshot` after each logical band, not after every cell.
-
 ## Anti-patterns (NEVER do these)
 
 - ❌ Text + AWS stencil side by side → label is duplicated and truncated. Set `label=""` on the icon cell and let the stencil show its own name.
-- ❌ `fillColor="#FFFFFF"` on every service card → defeats the category color system. Use the 12 % category tint.
-- ❌ 5-10 lines of "spec" text crammed inside a card → unreadable. Keep cards to icon + 1 optional line.
-- ❌ Random stroke widths (1, 1.5, 2, 2.5, 3 mixed) → commit to 1.5 / 2.5 / dashed.
-- ❌ Mixed fonts and sizes → use the scale above; nothing else.
-- ❌ Dashed edges where solid is meant (or vice versa) → data flow = solid, monitoring / replication = dashed.
+- ❌ `fillColor="#FFFFFF"` on every service card → use a category tint, or omit (transparent) when the project calls for minimal styling.
+- ❌ 5-10 lines of "spec" text crammed inside a card → keep cards to icon + 1 optional line.
+- ❌ One fixed layout for every project → choose the layout in Step 1.
+- ❌ One fixed palette for every project → choose the palette in Step 2.
 - ❌ `drawio_live_clear` on a canvas that already has user content → use `add_page` + `switch_page` instead.
 - ❌ Pre-building XML and opening it as the deliverable → `save_snapshot` must serialize the *visible* graph.
 - ❌ Saving over an existing file the user did not explicitly authorize → prompt first, or write to `<filename>-v2.drawio`.
 - ❌ Using `drawio_create_diagram` or `drawio_write_xml` — those tools were removed in 1.2.0. Use the live MCP.
 
-## Validation checklist (run before reporting done)
+## Validation checklist (before reporting done)
 
-- [ ] All cards use one of the 7 category fills, never pure white.
-- [ ] All text uses one of: 22 / 14 / 11 / 10 / 9 px.
+- [ ] Layout matches the project shape (Step 1 was applied).
+- [ ] Palette matches the project theme (Step 2 was applied).
+- [ ] Density matches the component count (Step 3 was applied).
 - [ ] Stencil labels are not duplicated by a separate text cell.
-- [ ] No `fillColor="#FFFFFF"` on service cards.
-- [ ] All edges are either solid 1.5 / 2.5 or dashed `6 3` 1.5.
-- [ ] Page is wider than 1600 and under 2200 tall.
-- [ ] Footer line is present and centered.
+- [ ] No protocol labels on edges unless the user asked.
 - [ ] `drawio_validate` reports 0 errors, 0 warnings.
 
 ## Example prompts
 
 ```
-用 draw.io Scientific Illustrator 画一个 AWS 三层 Web 架构,VPC 双 AZ
-Draw this flowchart: form → email verify → welcome
-画一个 K8s 部署图: ingress → service → 3 pods → PVC
+/drawio-live 画一个 AWS 三层 Web 架构,VPC 双 AZ (vertical stack, AWS palette, density=medium)
+/drawio-live 画一个 CI/CD 流水线,代码 push → test → build → deploy (horizontal flow, single accent)
+/drawio-live 画一个 API Gateway + 6 个下游服务 (hub-and-spoke, blue palette)
+/drawio-live 画 RAG 系统对比 3 种方案 (matrix 2D, editorial palette)
+/drawio-live 画 SLO 演进路线 2024 → 2025 → 2026 (timeline, brand color)
 ```
