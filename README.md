@@ -4,7 +4,7 @@
 
 > **Forked from** [icebird1998/drawio-scientific-illustrator](https://github.com/icebird1998/drawio-scientific-illustrator) — original author: icebird1998.
 
-An MCP plugin for **Codex** and **Claude Code** that lets an AI agent draw scientific figures **live inside the visible draw.io desktop canvas**. You can watch shapes, labels, arrows, styling, and layout appear step by step. The live workflow calls draw.io's own graph API through a localhost-only MCP server; it does not automate the operating-system mouse or keyboard and does not create XML first and merely open it afterward.
+An MCP plugin for **Codex** and **Claude Code** that lets an AI agent draw diagrams **live inside the visible draw.io desktop canvas** from your description or requirements. You can watch shapes, labels, arrows, styling, and layout appear step by step. The live workflow calls draw.io's own graph API through a localhost-only MCP server; it does not automate the operating-system mouse or keyboard and does not create XML first and merely open it afterward.
 
 > Status: Windows is tested. macOS and Linux executable discovery is included, but live behavior can vary with draw.io/Electron packaging. Reports and pull requests are welcome.
 
@@ -14,13 +14,18 @@ An MCP plugin for **Codex** and **Claude Code** that lets an AI agent draw scien
 
 - `drawio-live` MCP server: launches/connects to the visible draw.io desktop editor and edits its active graph model in real time.
 - `drawio-file-utils` MCP server: validates saved `.drawio` documents and exports PNG, SVG, PDF, or JPG deliverables.
-- **Skills**: teach the agent to inspect a reference, decompose it into editable primitives, draw with pacing, visually review sections, refine the live graph, and save only after the visible drawing exists. Available for both Codex and Claude Code. Two skills are provided:
-  - `drawio-live` — draw diagrams from scratch via `/drawio-live`
-  - `recreate-scientific-figure-in-drawio` — recreate a reference image as editable geometry
+- **Skills**: teach the agent to plan a diagram from your description, decompose it into editable primitives, draw with pacing, visually review sections, refine the live graph, and save only after the visible drawing exists. Available for both Codex and Claude Code:
+  - `drawio-live` — draw diagrams from a description via `/drawio-live`
 - A repository-local Codex marketplace so the complete plugin can be installed as one unit.
 - A root `.mcp.json` so Claude Code can auto-detect the MCP servers when the repository is opened as a project.
 
 This is therefore both an **MCP implementation** and a **multi-host plugin**. MCP provides the callable tools; the plugin is the installable package containing the MCP servers, skill, and presentation metadata.
+
+### What's new in 1.2.0
+
+- Refocused on **drawing from a description** (via the `drawio-live` skill). The old "recreate from a reference image" skill has been removed.
+- Added a production-ready template at [`templates/01-aws-3tier-webapp/`](templates/01-aws-3tier-webapp/template.drawio) — a multi-AZ AWS reference architecture that demonstrates the design system (AWS stencils, category color blocks, dashed boundaries, no in-card text).
+- Sample outputs from prior sessions are kept under [`examples/`](examples/) for reference.
 
 ### Requirements
 
@@ -90,9 +95,9 @@ git clone https://github.com/vector4wang/drawio-scientific-illustrator.git
 cd drawio-scientific-illustrator
 
 # Install the skill globally:
-mkdir -p ~/.claude/skills/recreate-scientific-figure-in-drawio
-cp claude-code/skills/recreate-scientific-figure-in-drawio/SKILL.md \
-   ~/.claude/skills/recreate-scientific-figure-in-drawio/SKILL.md
+mkdir -p ~/.claude/skills/drawio-live
+cp claude-code/skills/drawio-live/SKILL.md \
+   ~/.claude/skills/drawio-live/SKILL.md
 
 # The .mcp.json at the project root is auto-detected by Claude Code.
 ```
@@ -102,38 +107,45 @@ Then open the cloned repository directory as your Claude Code project.
 ### How to use it
 
 1. Restart Codex after installation and create a new task (for Claude Code, open the project directory).
-2. Attach a PNG, JPEG, SVG, or a rendered PDF page as the reference.
+2. Describe the diagram you want (architecture, flowchart, network, process, etc.).
 3. Mention **Draw.io Scientific Illustrator** or use `/drawio-live` (Claude Code).
 4. State the desired pacing and output formats.
 
-> **Recommended Codex configuration for complex scientific redraws:** choose **GPT-5.6 Sol** and set reasoning effort to **Max**. In Codex settings, enable the six-level reasoning selector first; the default five-level selector does not show the Max option. This setting can increase response time and token use.
+> **Recommended Codex configuration for complex diagrams:** choose **GPT-5.6 Sol** and set reasoning effort to **Max**. In Codex settings, enable the six-level reasoning selector first; the default five-level selector does not show the Max option. This setting can increase response time and token use.
 
 Recommended prompt:
 
 ```text
-Use Draw.io Scientific Illustrator. Launch the live draw.io canvas and recreate this
-reference scientific figure step by step with a 100 ms delay. Control only draw.io's
+Use Draw.io Scientific Illustrator. Launch the live draw.io canvas and draw the
+diagram I describe step by step with a 100 ms delay. Control only draw.io's
 own graph API; do not use OS mouse/keyboard automation and do not generate XML first.
 Keep all labels, arrows, panels, and legends editable. Visually inspect and refine each
 section, then save the final .drawio file and export a 2000 px PNG preview.
 ```
 
+### Using a template
+
+1. Open the template's `.drawio` file in draw.io (for example, `templates/01-aws-3tier-webapp/template.drawio`).
+2. From Claude Code: `/drawio-live extend this template with a Lambda function for image resizing between CloudFront and the ALB`.
+3. From Codex: select **Draw.io Scientific Illustrator** and describe the change.
+4. The agent will launch the live canvas, add the requested shape with the same fill / stroke / icon conventions, and prompt you before saving. See [`templates/README.md`](templates/README.md) for the full design system used by the templates.
+
 Chinese prompts work equally well:
 
 ```text
-使用 Draw.io Scientific Illustrator。启动实时 draw.io，以 100 ms 的步骤间隔重绘
-这张参考图。必须直接控制 draw.io 画布，不要使用系统鼠标键盘控制，也不要先生成
+使用 Draw.io Scientific Illustrator。启动实时 draw.io，以 100 ms 的步骤间隔逐步绘制
+我描述的图。必须直接控制 draw.io 画布，不要使用系统鼠标键盘控制，也不要先生成
 XML。文字、箭头、分区和图例都要可编辑；完成后保存 .drawio 并导出 2000 px PNG。
 ```
 
 ### How to use it with Claude Code
 
 1. Open the cloned repository directory as your Claude Code project.
-2. Attach a PNG, JPEG, SVG, or a rendered PDF page as the reference.
-3. All MCP tools (`drawio_live_*`, `drawio_validate`, `drawio_export`, etc.) and both skills are available automatically.
+2. Describe the diagram you want (architecture, flowchart, network, process, etc.).
+3. All MCP tools (`drawio_live_*`, `drawio_validate`, `drawio_export`, etc.) and the `drawio-live` skill are available automatically.
 
 ```text
-Launch the live draw.io canvas and recreate this reference scientific figure step
+Launch the live draw.io canvas and draw the diagram I describe step
 by step with a 400 ms delay. Control only draw.io's own graph API; do not use OS
 mouse/keyboard automation and do not generate XML first. Keep all labels, arrows,
 panels, and legends editable. Visually inspect and refine each section, then save
@@ -198,7 +210,7 @@ Run the same installer again. It performs a fast-forward `git pull` and reinstal
 ### Known limitations
 
 - The live API currently emphasizes editable draw.io primitives. Dense microscopy images, photographs, heatmaps, and complex plots may need a future dedicated live image-insertion operation.
-- Visual fidelity depends on reference resolution and how well the content can be represented by draw.io primitives.
+- Visual fidelity depends on how well the requested content can be represented by draw.io primitives.
 - Windows is the tested platform; macOS/Linux support is best effort until community testing expands.
 
 ---
@@ -209,7 +221,7 @@ Run the same installer again. It performs a fast-forward `git pull` and reinstal
 
 > **Fork 自** [icebird1998/drawio-scientific-illustrator](https://github.com/icebird1998/drawio-scientific-illustrator) — 原始作者：icebird1998。
 
-Draw.io Scientific Illustrator 是一个面向科研插图的 MCP 插件，同时支持 Codex 和 Claude Code。它会启动桌面版 draw.io，并通过仅限本机的 MCP 通道直接调用 draw.io 自身的图模型 API。你可以亲眼看到形状、文字、箭头、配色和布局按步骤出现在画布上。
+Draw.io Scientific Illustrator 是一个 MCP 插件，同时支持 Codex 和 Claude Code。它会启动桌面版 draw.io，根据你的描述或需求，通过仅限本机的 MCP 通道直接调用 draw.io 自身的图模型 API 绘制图。你可以亲眼看到形状、文字、箭头、配色和布局按步骤出现在画布上。
 
 它不会模拟系统鼠标或键盘，也不会先生成一个 XML 文件再让 draw.io 打开。只有当可见画布中的图已经绘制完成后，才会把当前图模型保存为 `.drawio` 文件。
 
@@ -217,9 +229,8 @@ Draw.io Scientific Illustrator 是一个面向科研插图的 MCP 插件，同�
 
 - 实时控制 draw.io 画布的 `drawio-live` MCP；
 - 校验和导出的 `drawio-file-utils` MCP；
-- 指导 AI 重绘、检查和迭代科研插图的 Skills（同时提供 Codex 和 Claude Code 版本）：
-  - `drawio-live` — 从零开始逐步绘制
-  - `recreate-scientific-figure-in-drawio` — 根据参考图临摹重绘
+- 指导 AI 根据描述绘制、检查和迭代图的 Skill（同时提供 Codex 和 Claude Code 版本）：
+  - `drawio-live` — 根据你的描述逐步绘制
 - 可供 Codex 安装的自定义插件市场配置；
 - 项目根目录的 `.mcp.json`，供 Claude Code 自动发现 MCP 服务器。
 
@@ -289,9 +300,9 @@ git clone https://github.com/vector4wang/drawio-scientific-illustrator.git
 cd drawio-scientific-illustrator
 
 # 安装 Skill 到全局目录：
-mkdir -p ~/.claude/skills/recreate-scientific-figure-in-drawio
-cp claude-code/skills/recreate-scientific-figure-in-drawio/SKILL.md \
-   ~/.claude/skills/recreate-scientific-figure-in-drawio/SKILL.md
+mkdir -p ~/.claude/skills/drawio-live
+cp claude-code/skills/drawio-live/SKILL.md \
+   ~/.claude/skills/drawio-live/SKILL.md
 
 # 项目根目录的 .mcp.json 会被 Claude Code 自动发现。
 ```
@@ -301,29 +312,36 @@ cp claude-code/skills/recreate-scientific-figure-in-drawio/SKILL.md \
 ### 使用方法
 
 1. 重启 Codex 并新建任务（Claude Code 则将克隆目录作为项目打开）；
-2. 上传 PNG、JPEG、SVG，或者从 PDF 渲染出的参考页；
+2. 描述你想要的图（架构图、流程图、网络图、时序/流程图等）；
 3. 在输入框选择或提到 **Draw.io Scientific Illustrator**，或使用 `/drawio-live`（Claude Code）；
 4. 说明绘制步进间隔、画面尺寸和希望导出的格式。
 
-> **复杂科研插图重绘建议的 Codex 设置：**选择 **GPT-5.6 Sol**，并将推理等级设为 **“最高（Max）”**。需要先在 Codex 设置中开启 **6 档推理等级**；默认的 **5 档**选择器不会显示“最高”选项。该设置可能增加响应时间和 token 用量。
+> **复杂图绘制建议的 Codex 设置：**选择 **GPT-5.6 Sol**，并将推理等级设为 **“最高（Max）”**。需要先在 Codex 设置中开启 **6 档推理等级**；默认的 **5 档**选择器不会显示“最高”选项。该设置可能增加响应时间和 token 用量。
 
 推荐提示词：
 
 ```text
-使用 Draw.io Scientific Illustrator。启动实时 draw.io，以 100 ms 的步骤间隔逐步重绘
-这张参考图。必须直接控制 draw.io 自己的画布 API，不要控制系统鼠标键盘，也不要先
+使用 Draw.io Scientific Illustrator。启动实时 draw.io，以 100 ms 的步骤间隔逐步绘制
+我描述的图。必须直接控制 draw.io 自己的画布 API，不要控制系统鼠标键盘，也不要先
 生成 XML。所有文字、箭头、分区、图例都要保持可编辑。每完成一个逻辑区域就检查并
 修正，最后保存 .drawio，并导出宽度为 2000 px 的 PNG 预览图。
 ```
 
+### 使用模板
+
+1. 在 draw.io 中打开模板文件，例如 `templates/01-aws-3tier-webapp/template.drawio`。
+2. Claude Code：`/drawio-live 在 CloudFront 和 ALB 之间增加一个用于图片缩放的 Lambda 函数`。
+3. Codex：选择 **Draw.io Scientific Illustrator**，用自然语言描述修改。
+4. Agent 会启动实时画布，按统一的填色 / 描边 / 图标规则新增形状，并在保存前与你确认。完整设计规范见 [`templates/README.md`](templates/README.md)。
+
 ### Claude Code 使用方式
 
 1. 将克隆的仓库目录作为 Claude Code 项目打开。
-2. 上传 PNG、JPEG、SVG，或从 PDF 渲染出的参考页。
-3. 所有 MCP 工具（`drawio_live_*`、`drawio_validate`、`drawio_export` 等）和两个 Skill 会自动可用。
+2. 描述你想要的图（架构图、流程图、网络图、时序/流程图等）。
+3. 所有 MCP 工具（`drawio_live_*`、`drawio_validate`、`drawio_export` 等）和 `drawio-live` Skill 会自动可用。
 
 ```text
-启动实时 draw.io，以 400 ms 的步骤间隔重绘这张参考图。必须直接控制 draw.io 画布，
+启动实时 draw.io，以 400 ms 的步骤间隔绘制我描述的图。必须直接控制 draw.io 画布，
 不要使用系统鼠标键盘控制，也不要先生成 XML。文字、箭头、分区和图例都要可编辑；
 完成后保存 .drawio 并导出 2000 px PNG。
 ```
@@ -379,7 +397,7 @@ $env:DRAWIO_PATH = "D:\Apps\draw.io\draw.io.exe"
 ### 当前限制
 
 - 实时工具目前主要面向可编辑的 draw.io 图元。显微照片、热图和复杂数据图可能需要后续增加专门的实时图片插入工具；
-- 最终还原度取决于参考图分辨率，以及内容是否适合用 draw.io 图元表达；
+- 最终呈现效果取决于所需内容是否适合用 draw.io 图元表达；
 - 当前已在 Windows 上测试，macOS/Linux 暂为尽力支持，欢迎提交测试反馈。
 
 ## Contributing / 参与贡献

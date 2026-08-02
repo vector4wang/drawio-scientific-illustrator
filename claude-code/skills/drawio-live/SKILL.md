@@ -16,7 +16,6 @@ Draw diagrams live in the visible draw.io desktop canvas using MCP tools. Each s
 
 ## When NOT to use
 
-- User asks to recreate a scientific figure from a reference image → use `recreate-scientific-figure-in-drawio`
 - User wants to generate a .drawio file from code → use `codegen-diagram`
 - User wants C4 architecture diagrams → use `c4-architecture`
 
